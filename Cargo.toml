@@ -1,0 +1,17 @@
+[package]
+name = "rand-facade"
+version = "0.1.0"
+authors = ["ryan <ryan@kurte.nz>"]
+edition = "2018"
+
+[features]
+std = [ "rand/std" ] 
+cortex_m = [ "cortex-m", "lazy_static/spin_no_std" ]
+
+default = []
+
+[dependencies]
+rand = { version = "0.7.3", default_features = false }
+cortex-m = { version = "0.6.2", optional = true }
+rand_chacha = { version = "0.2.2", default_features = false } 
+lazy_static = { version = "1.4.0", default_features = false }
