@@ -1,8 +1,9 @@
 #![no_std]
 
-use rand::{CryptoRng, Error};
 use core::cell::RefCell;
-use rand_chacha::ChaChaRng;
+use core::pin::Pin;
+
+use rand::{RngCore, CryptoRng, Error};
 use lazy_static::lazy_static;
 
 #[cfg(feature = "std")]
@@ -14,10 +15,9 @@ use std::sync::Mutex;
 #[cfg(feature = "cortex_m")]
 use cortex_m::interrupt::Mutex;
 
-
 lazy_static! {
     /// Global RNG instance
-    static ref GLOBAL_RNG: Mutex<RefCell<Option<ChaChaRng>>> = Mutex::new(RefCell::new(None));
+    static ref GLOBAL_RNG: Mutex<RefCell<Option<&'static mut (dyn RngCore + Sync + Send)>>> = Mutex::new(RefCell::new(None));
 }
 
 /// Wrapper providing mutex backed access to a global RNG instance
@@ -30,16 +30,17 @@ impl GlobalRng {
     }
 
     /// Set the underlying instance for the global RNG
-    #[cfg(feature = "std")]
-    pub fn set(rng: ChaChaRng) {
-        GLOBAL_RNG.lock().unwrap().replace(Some(rng));
-    }
-
-    /// Set the underlying instance for the global RNG
-    
-    #[cfg(feature = "cortex_m")]
-    pub fn set(rng: ChaChaRng) {
-        cortex_m::interrupt::free(|cs| {
+    /// This extends the lifetime of the provided object to `static so, better not go missing
+    pub unsafe fn set<'a>(rng: Pin<&'a mut (dyn RngCore + Unpin)>) {
+        // TODO: YIKES there's gotta be a better way
+        let rng = core::mem::transmute::<&'a mut (dyn RngCore), &'static mut (dyn RngCore + Sync + Send)>(rng.get_mut());
+        
+        #[cfg(feature = "std")] {
+            GLOBAL_RNG.lock().unwrap().replace(Some(rng));
+        }
+        
+        #[cfg(feature = "cortex_m")]
+        cortex_m::interrupt::free(move |cs| {
             GLOBAL_RNG.borrow(cs).replace(Some(rng))
         });
     }
