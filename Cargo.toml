@@ -1,17 +1,24 @@
 [package]
 name = "rand-facade"
-version = "0.1.0"
+description = "A global mutex-based random facade for no_std compatible libraries that require an initialised random number generator"
+repository = "https://github.com/ryankurte/rust-rand-facade"
+keywords = ["no_std", "embedded", "rand", "random", "facade"]
+categories = ["no-std"]
 authors = ["ryan <ryan@kurte.nz>"]
+readme = "README.md"
+version = "0.1.0"
 edition = "2018"
+license = "MIT"
+
 
 [features]
 std = [ "rand/std" ] 
 cortex_m = [ "cortex-m", "lazy_static/spin_no_std" ]
 
-default = []
+default = [ "std" ]
 
 [dependencies]
 rand = { version = "0.7.3", default_features = false }
-cortex-m = { version = "0.6.2", optional = true }
 rand_chacha = { version = "0.2.2", default_features = false } 
 lazy_static = { version = "1.4.0", default_features = false }
+cortex-m = { version = "0.6.2", optional = true }
