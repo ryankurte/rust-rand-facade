@@ -12,10 +12,11 @@ license = "MIT"
 
 
 [features]
-std = [ "rand/std" ] 
+os_rng = [ "rand/std" ]
+std = [ "rand/std" ]
 cortex_m = [ "cortex-m", "lazy_static/spin_no_std" ]
 
-default = [ "std" ]
+default = [ "os_rng" ]
 
 [dependencies]
 rand = { version = "0.7.3", default_features = false }

@@ -1,4 +1,13 @@
 language: rust
 rust:
-    - nightly
-    - stable
+- nightly
+- stable
+
+env:
+- FEATURE=std
+- FEATURE=os_rng
+- FEATURE=cortex_m
+
+script:
+- cargo build --no-default-features --features=$FEATURE
+- cargo test --no-default-features --features=$FEATURE
