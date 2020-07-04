@@ -22,20 +22,34 @@
 #![no_std]
 
 use core::cell::RefCell;
-use core::pin::Pin;
 use core::marker::PhantomData;
 
 use rand::{RngCore, CryptoRng, Error};
 use lazy_static::lazy_static;
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "os_rng"))]
 extern crate std;
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "os_rng"))]
 use std::sync::Mutex;
 
 #[cfg(feature = "cortex_m")]
 use cortex_m::interrupt::Mutex;
+
+
+#[cfg(all(feature = "std", feature = "cortex_m"))]
+compile_error!("Only one of 'std', 'os_rng', or 'cortex_m' features may be enabled");
+
+#[cfg(all(feature = "std", feature = "os_rng"))]
+compile_error!("Only one of 'std', 'os_rng', or 'cortex_m' features may be enabled");
+
+#[cfg(all(feature = "cortex_m", feature = "os_rng"))]
+compile_error!("Only one of 'std', 'os_rng', or 'cortex_m' features may be enabled");
+
+
+#[cfg(not(any(feature = "std", feature = "cortex_m", feature = "os_rng")))]
+compile_error!("One of 'os_rng', 'std', 'cortex_m' features must be enabled");
+
 
 lazy_static! {
     /// Global RNG instance
@@ -51,6 +65,9 @@ impl <T> Rng for T where T: RngCore + CryptoRng {}
 
 /// Wrapper providing mutex backed access to a global RNG instance
 pub struct GlobalRng {}
+
+/// GlobalRng instances must be CryptoRng
+impl CryptoRng for GlobalRng {}
 
 
 /// Guard type holding the bound rng, when this is dropped the global 
@@ -73,17 +90,24 @@ impl <'a> Drop for RngGuard <'a> {
 }
 
 impl GlobalRng {
-    /// Fetch an instance of the global RNG
-    pub fn get() -> Self {
-        GlobalRng{}
+    /// Fetch an instance of the global RNG.
+    /// 
+    /// This can always be constructed, however, calling the RNG functions without
+    /// having an appropriate RNG bound (or, defined by default with `os_rng`)
+    /// will cause a panic.
+    ///
+    /// When `os_rng` is enabled this acts as a transparent wrapper over `rand::rngs::OsRng`.
+    pub fn get() -> impl Rng {
+        return GlobalRng{};
     }
 
     /// Set the underlying instance for the global RNG
     /// 
     /// This extends the lifetime of the provided object to `static, and removes the
     /// global binding when the returned RngGuard is dropped.
-    pub fn set<'a>(rng: Pin<&'a mut (dyn Rng + Unpin)>) -> RngGuard<'a> {
-        // TODO: YIKES there's gotta be a better way
+    #[cfg(not(feature = "os_rng"))]
+    pub fn set<'a>(rng: core::pin::Pin<&'a mut (dyn Rng + Unpin)>) -> RngGuard<'a> {
+        // Transmute from limited ('a) lifetime to `static
         let rng = unsafe { core::mem::transmute::<&'a mut (dyn Rng), &'static mut (dyn Rng + Sync + Send)>(rng.get_mut()) };
         
         #[cfg(feature = "std")] {
@@ -99,16 +123,25 @@ impl GlobalRng {
     }
 }
 
-/// GlobalRng instances must be CryptoRng
-impl CryptoRng for GlobalRng {}
 
-
-#[cfg(all(feature = "std", feature = "cortex_m"))]
-compile_error!("Only one of 'std' or 'cortex_m' features may be enabled");
-
-#[cfg(not(any(feature = "std", feature = "cortex_m")))]
-compile_error!("One of 'std' or 'cortex_m' features must be enabled");
-
+#[cfg(feature = "os_rng")]
+impl rand::RngCore for GlobalRng {
+    fn next_u32(&mut self) -> u32 {
+        rand::rngs::OsRng.next_u32()
+    }
+    
+    fn next_u64(&mut self) -> u64 {
+        rand::rngs::OsRng.next_u64()
+    }
+    
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        rand::rngs::OsRng.fill_bytes(dest)
+    }
+    
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
+        rand::rngs::OsRng.try_fill_bytes(dest)
+    }
+}
 
 /// Standard library mutex based implementation
 #[cfg(feature = "std")]
