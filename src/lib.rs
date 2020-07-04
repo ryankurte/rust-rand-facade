@@ -1,7 +1,7 @@
 //! A cursed facade for using / sharing a RngCore implementation between components
 //! using a global random instance and some RAII tricks.
 //! 
-//! ```
+//! ``` no_run
 //! use std::pin::Pin;
 //! use rand::{RngCore, SeedableRng};
 //! use rand_chacha::ChaChaRng;
@@ -105,21 +105,26 @@ impl GlobalRng {
     /// 
     /// This extends the lifetime of the provided object to `static, and removes the
     /// global binding when the returned RngGuard is dropped.
-    #[cfg(not(feature = "os_rng"))]
     pub fn set<'a>(rng: core::pin::Pin<&'a mut (dyn Rng + Unpin)>) -> RngGuard<'a> {
-        // Transmute from limited ('a) lifetime to `static
-        let rng = unsafe { core::mem::transmute::<&'a mut (dyn Rng), &'static mut (dyn Rng + Sync + Send)>(rng.get_mut()) };
-        
-        #[cfg(feature = "std")] {
-            GLOBAL_RNG.lock().unwrap().replace(Some(rng));
-        }
-        
-        #[cfg(feature = "cortex_m")]
-        cortex_m::interrupt::free(move |cs| {
-            GLOBAL_RNG.borrow(cs).replace(Some(rng))
-        });
+        #[cfg(feature = "os_rng")]
+        panic!("Global RNG binding is not available with `os_rng` feature");
 
-        RngGuard{rng: PhantomData}
+        #[cfg(not(feature = "os_rng"))]
+        {
+            // Transmute from limited ('a) lifetime to `static
+            let rng = unsafe { core::mem::transmute::<&'a mut (dyn Rng), &'static mut (dyn Rng + Sync + Send)>(rng.get_mut()) };
+            
+            #[cfg(feature = "std")] {
+                GLOBAL_RNG.lock().unwrap().replace(Some(rng));
+            }
+            
+            #[cfg(feature = "cortex_m")]
+            cortex_m::interrupt::free(move |cs| {
+                GLOBAL_RNG.borrow(cs).replace(Some(rng))
+            });
+
+            RngGuard{rng: PhantomData}
+        }
     }
 }
 
@@ -192,7 +197,7 @@ impl rand::RngCore for GlobalRng {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature="std"))]
 mod test {
 
     use std::pin::Pin;
