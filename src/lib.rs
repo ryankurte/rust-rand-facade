@@ -97,7 +97,7 @@ impl GlobalRng {
     /// will cause a panic.
     ///
     /// When `os_rng` is enabled this acts as a transparent wrapper over `rand::rngs::OsRng`.
-    pub fn get() -> impl Rng {
+    pub fn get() -> Self {
         return GlobalRng{};
     }
 
