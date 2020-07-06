@@ -12,14 +12,20 @@ license = "MIT"
 
 
 [features]
-os_rng = [ "rand/std" ]
-std = [ "rand/std" ]
+os_rng = [ "rand", "rand/std" ]
+std = [ "rand" ]
 cortex_m = [ "cortex-m", "lazy_static/spin_no_std" ]
 
-default = [ "os_rng" ]
+default = []
 
 [dependencies]
-rand = { version = "0.7.3", default_features = false }
-rand_chacha = { version = "0.2.2", default_features = false } 
+rand_core = { version = "0.5.1", default_features = false }
 lazy_static = { version = "1.4.0", default_features = false }
+
+
+rand = { version = "0.7.3", default_features = false, optional = true }
 cortex-m = { version = "0.6.2", optional = true }
+
+
+[dev-dependencies]
+rand_chacha = { version = "0.2.2", default_features = false } 

@@ -11,3 +11,5 @@ env:
 script:
 - cargo build --no-default-features --features=$FEATURE
 - cargo test --no-default-features --features=$FEATURE
+
+

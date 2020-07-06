@@ -3,7 +3,7 @@
 //! 
 //! ``` no_run
 //! use std::pin::Pin;
-//! use rand::{RngCore, SeedableRng};
+//! use rand_core::{RngCore, SeedableRng};
 //! use rand_chacha::ChaChaRng;
 //! use rand_facade::GlobalRng;
 //!
@@ -24,7 +24,7 @@
 use core::cell::RefCell;
 use core::marker::PhantomData;
 
-use rand::{RngCore, CryptoRng, Error};
+use rand_core::{RngCore, CryptoRng, Error};
 use lazy_static::lazy_static;
 
 #[cfg(any(feature = "std", feature = "os_rng"))]
@@ -130,7 +130,7 @@ impl GlobalRng {
 
 
 #[cfg(feature = "os_rng")]
-impl rand::RngCore for GlobalRng {
+impl rand_core::RngCore for GlobalRng {
     fn next_u32(&mut self) -> u32 {
         rand::rngs::OsRng.next_u32()
     }
@@ -150,7 +150,7 @@ impl rand::RngCore for GlobalRng {
 
 /// Standard library mutex based implementation
 #[cfg(feature = "std")]
-impl rand::RngCore for GlobalRng {
+impl rand_core::RngCore for GlobalRng {
     fn next_u32(&mut self) -> u32 {
         GLOBAL_RNG.lock().unwrap().borrow_mut().as_mut().unwrap().next_u32()
     }
@@ -171,7 +171,7 @@ impl rand::RngCore for GlobalRng {
 
 /// cortex-m mutex based implementation
 #[cfg(feature = "cortex_m")]
-impl rand::RngCore for GlobalRng {
+impl rand_core::RngCore for GlobalRng {
     fn next_u32(&mut self) -> u32 {
         cortex_m::interrupt::free(|cs| {
             GLOBAL_RNG.borrow(cs).borrow_mut().as_mut().unwrap().next_u32()
